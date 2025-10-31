@@ -101,7 +101,7 @@ src/
 - Separation of concerns: UI, state, web3, and data services
 
 ### 🔗 Links
-- Live App: coming soon
+- Live App: https://polyhedx.vercel.app/
 - GitHub: https://github.com/manuel-xeroz/POLYHEDX.git
 - Pitch/Deck: coming soon
 
