@@ -103,6 +103,7 @@ src/
 ### 🔗 Links
 - Live App: https://polyhedx.vercel.app/
 - GitHub: https://github.com/manuel-xeroz/POLYHEDX.git
+- Certification Link: https://ibb.co/4Z9dPRtV
 - Pitch/Deck: coming soon
 
 
