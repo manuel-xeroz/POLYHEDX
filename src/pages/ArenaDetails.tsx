@@ -173,14 +173,32 @@ const ArenaDetails: React.FC = () => {
       try { localStorage.setItem(`${storagePrefix}_txs`, JSON.stringify(next)); } catch {}
       return next;
     });
-    // Update local balance (mock)
-    setUserBalance(b => Math.max(0, b - qty * price));
+    // Update local balance (mock) with insurance premium
+    const totalCost = qty * price + insurancePremium;
+    setUserBalance(b => Math.max(0, b - totalCost));
     // Update arena votes locally
     try {
       const updated = { ...arena } as any;
       if (isBuying) updated.yesVotes = (updated.yesVotes || 0) + qty;
       else updated.noVotes = (updated.noVotes || 0) + qty;
       dispatch({ type: 'UPDATE_ARENA', payload: updated });
+    } catch {}
+    // Persist trade with insurance fields
+    try {
+      const tradesRaw = localStorage.getItem(`${storagePrefix}_trades`);
+      const trades = tradesRaw ? JSON.parse(tradesRaw) : [];
+      trades.unshift({
+        id: tx.id,
+        side: isBuying ? 'YES' : 'NO',
+        stake: qty,
+        price,
+        coverage,
+        premium: insurancePremium,
+        timestamp: new Date().toISOString(),
+        status: 'open',
+        payout: 0,
+      });
+      localStorage.setItem(`${storagePrefix}_trades`, JSON.stringify(trades));
     } catch {}
   };
 
@@ -215,6 +233,16 @@ const ArenaDetails: React.FC = () => {
   const currentNoPrice = (marketData?.currentNoPrice ?? noBase) || 0.5;
   const totalVolume = marketData?.totalVolume || (arena ? arena.poolSize : 0);
   const openInterest = marketData?.openInterest || (arena ? arena.participants.length * 100 : 0);
+
+  // Insurance state & pricing (demo)
+  const [insuranceEnabled, setInsuranceEnabled] = useState(false);
+  const [coveragePercent, setCoveragePercent] = useState(0); // 0 - 80
+  const stake = isBuying ? sharesToBuy : sharesToSell;
+  const marketProb = isBuying ? currentYesPrice : currentNoPrice;
+  const premiumRate = 0.05 + 0.10 * Math.abs(marketProb - 0.5);
+  const coverage = Math.min(0.8, Math.max(0, coveragePercent / 100));
+  const insurancePremium = insuranceEnabled ? stake * coverage * premiumRate : 0;
+  const maxLossWithInsurance = insuranceEnabled ? stake * (1 - coverage) : stake;
 
   // Auto-add scrolling activity (animated) every 7s (guarded)
   useEffect(() => {
@@ -636,16 +664,53 @@ const ArenaDetails: React.FC = () => {
                           }
                         </span>
                       </div>
+                      {/* Insurance Controls */}
+                      <div className="flex items-center justify-between text-sm mb-2">
+                        <label className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            checked={insuranceEnabled}
+                            onChange={(e) => setInsuranceEnabled(e.target.checked)}
+                            className="accent-primary"
+                          />
+                          <span className="text-text">Add Insurance</span>
+                        </label>
+                        <span className="text-text-secondary">Rate: {(premiumRate * 100).toFixed(1)}%</span>
+                      </div>
+                      <div className={`mb-2 ${insuranceEnabled ? '' : 'opacity-50'}`}>
+                        <div className="flex items-center justify-between text-xs mb-1">
+                          <span className="text-text-secondary">Coverage</span>
+                          <span className="text-text">{coveragePercent}%</span>
+                        </div>
+                        <input
+                          type="range"
+                          min={0}
+                          max={80}
+                          step={5}
+                          disabled={!insuranceEnabled}
+                          value={coveragePercent}
+                          onChange={(e) => setCoveragePercent(Number(e.target.value))}
+                          className="w-full"
+                        />
+                      </div>
+                      <div className="flex justify-between text-sm mb-2">
+                        <span className="text-text-secondary">Premium</span>
+                        <span className="text-text">{formatHBAR(insurancePremium)}</span>
+                      </div>
                       <div className="flex justify-between text-sm mb-2">
                         <span className="text-text-secondary">Total cost</span>
-                        <span className="text-text">
-                          {formatHBAR((isBuying ? sharesToBuy : sharesToSell) * (isBuying ? currentYesPrice : currentNoPrice))}
-                        </span>
+                        <span className="text-text">{formatHBAR((isBuying ? sharesToBuy : sharesToSell) * (isBuying ? currentYesPrice : currentNoPrice) + insurancePremium)}</span>
                       </div>
                       <div className="flex justify-between text-sm font-bold">
                         <span className="text-text-secondary">You will receive</span>
                         <span className="text-text">{isBuying ? sharesToBuy : sharesToSell} shares</span>
                       </div>
+                      {insuranceEnabled && (
+                        <div className="flex justify-between text-xs mt-1">
+                          <span className="text-text-secondary">Max loss with insurance</span>
+                          <span className="text-text">{formatHBAR(maxLossWithInsurance)}</span>
+                        </div>
+                      )}
                     </div>
 
                     <button
