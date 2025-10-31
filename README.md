@@ -1,5 +1,5 @@
 ## Polyhedx 🎲
-Predict2Earn arenas on Hedera — compete in curated, time‑boxed prediction battles across Crypto, Sports, and Culture. Connect your wallet, stake small amounts of HBAR, and climb the leaderboard. Win bragging rights, HBAR rewards, and collectible NFTs.
+Prediction arenas on Hedera — compete in curated, time‑boxed prediction battles across Crypto, Sports, and Culture. Connect your wallet, stake small amounts of HBAR, and climb the leaderboard. Win bragging rights, HBAR rewards, and collectible NFTs.
 
 ### 🚀 Overview
 Millions love making predictions — markets, games, culture. But informal prediction games lack automation, transparency, and global reach. Polyhedx brings this experience onchain on Hedera: fast, low‑fee, and transparent. Arenas are curated contests where users vote Yes/No with HBAR, and results are resolved fairly via an admin flow today, with onchain automation on the roadmap.
