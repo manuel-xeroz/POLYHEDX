@@ -81,12 +81,16 @@ const Header: React.FC = () => {
             <a href="/leaderboard" className="text-text-secondary hover:text-primary transition-colors font-medium">
               Leaderboard
             </a>
-            <a href="/results" className="text-text-secondary hover:text-primary transition-colors font-medium">
-              My Activity
-            </a>
-            <a href="/admin" className="text-text-secondary hover:text-primary transition-colors font-medium">
-              Admin
-            </a>
+            {(isConnected || (state.isConnected && state.user)) && (
+              <>
+                <a href="/results" className="text-text-secondary hover:text-primary transition-colors font-medium">
+                  My Activity
+                </a>
+                <a href="/admin" className="text-text-secondary hover:text-primary transition-colors font-medium">
+                  Admin
+                </a>
+              </>
+            )}
           </nav>
 
           {/* Mobile toggles */}
@@ -197,13 +201,17 @@ const Header: React.FC = () => {
       </AnimatePresence>
 
       {/* Mobile menu panel */}
-      {isMobileOpen && (
+          {isMobileOpen && (
         <div className="md:hidden border-t border-glass-border bg-glass-bg backdrop-blur-xl">
           <div className="max-w-7xl mx-auto px-4 py-4 space-y-3">
             <a href="/arenas" className="block text-text-secondary hover:text-primary font-medium">Arenas</a>
             <a href="/leaderboard" className="block text-text-secondary hover:text-primary font-medium">Leaderboard</a>
-            <a href="/results" className="block text-text-secondary hover:text-primary font-medium">My Activity</a>
-            <a href="/admin" className="block text-text-secondary hover:text-primary font-medium">Admin</a>
+                {(isConnected || (state.isConnected && state.user)) && (
+                  <>
+                    <a href="/results" className="block text-text-secondary hover:text-primary font-medium">My Activity</a>
+                    <a href="/admin" className="block text-text-secondary hover:text-primary font-medium">Admin</a>
+                  </>
+                )}
             {(isConnected || (state.isConnected && state.user)) ? (
                 <div className="pt-2">
                 <div className="flex items-center justify-between px-2 py-2 rounded-lg">

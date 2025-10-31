@@ -99,6 +99,32 @@ const Admin: React.FC = () => {
         correctAnswer,
       };
       dispatch({ type: 'UPDATE_ARENA', payload: updatedArena });
+
+      // Settle local trades persisted for this arena (demo payouts)
+      try {
+        const keyTrades = `polyhedx_arena_${arenaId}_trades`;
+        const keyTxs = `polyhedx_arena_${arenaId}_txs`;
+        const tradesRaw = localStorage.getItem(keyTrades);
+        const txsRaw = localStorage.getItem(keyTxs);
+        const trades = tradesRaw ? JSON.parse(tradesRaw) : [];
+        const txs = txsRaw ? JSON.parse(txsRaw) : [];
+        const settled = trades.map((t: any) => {
+          const won = (correctAnswer && t.side === 'YES') || (!correctAnswer && t.side === 'NO');
+          if (won) {
+            // Dummy win payout: 1.5x stake
+            const payout = Math.round(t.stake * 1.5);
+            txs.unshift({ id: Date.now() + Math.random(), user: 'system', action: 'Payout', shares: 0, price: payout, time: 'settled' });
+            return { ...t, status: 'won', payout };
+          } else {
+            // Refund insured portion only
+            const payout = Math.round(t.stake * (t.coverage || 0));
+            if (payout > 0) txs.unshift({ id: Date.now() + Math.random(), user: 'system', action: 'Insurance Payout', shares: 0, price: payout, time: 'settled' });
+            return { ...t, status: 'lost', payout };
+          }
+        });
+        localStorage.setItem(keyTrades, JSON.stringify(settled));
+        localStorage.setItem(keyTxs, JSON.stringify(txs.slice(0, 50)));
+      } catch {}
     }
   };
 

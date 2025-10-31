@@ -19,45 +19,37 @@ const Results: React.FC = () => {
     }
   }, [dispatch, state.arenas.length, state.nfts.length]);
 
-  // Mock resolved arenas for demonstration
-  const resolvedArenas = [
-    {
-      id: '1',
-      title: 'BTC > $70k by Sunday?',
-      correctAnswer: true,
-      userPrediction: true,
-      reward: 150,
-      isWon: true,
-      deadline: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
-    },
-    {
-      id: '2',
-      title: 'Nigeria wins AFCON?',
-      correctAnswer: false,
-      userPrediction: true,
-      reward: 0,
-      isWon: false,
-      deadline: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
-    },
-    {
-      id: '3',
-      title: 'Drake or Burna Boy for Song of the Year?',
-      correctAnswer: true,
-      userPrediction: true,
-      reward: 200,
-      isWon: true,
-      deadline: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 7 days ago
-    },
-  ];
+  // Build activity from local trades across arenas
+  const trades = state.arenas.flatMap((arena) => {
+    try {
+      const raw = localStorage.getItem(`polyhedx_arena_${arena.id}_trades`);
+      const arr = raw ? JSON.parse(raw) : [];
+      return arr.map((t: any) => ({
+        arenaId: arena.id,
+        title: arena.title,
+        correctAnswer: arena.correctAnswer,
+        isResolved: arena.isResolved,
+        userPrediction: t.side === 'YES',
+        stake: t.stake,
+        coverage: t.coverage || 0,
+        premium: t.premium || 0,
+        payout: t.payout || 0,
+        status: t.status || 'open',
+        timestamp: new Date(t.timestamp || Date.now()),
+      }));
+    } catch {
+      return [] as any[];
+    }
+  }).sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
 
-  const totalRewards = resolvedArenas.reduce((sum, arena) => sum + arena.reward, 0);
-  const winCount = resolvedArenas.filter(arena => arena.isWon).length;
-  const totalPredictions = resolvedArenas.length;
+  // Derive stats
+  const totalRewards = trades.filter(t => t.status !== 'open').reduce((sum, t) => sum + (t.status === 'won' ? t.payout : 0), 0);
+  const winCount = trades.filter(t => t.status === 'won').length;
+  const totalPredictions = trades.length;
   const winRate = totalPredictions > 0 ? (winCount / totalPredictions) * 100 : 0;
 
   const handleClaimNFT = (nftId: string) => {
     setClaimedNFTs(prev => new Set(Array.from(prev).concat(nftId)));
-    // Mock NFT claiming
     console.log(`Claiming NFT: ${nftId}`);
   };
 
@@ -103,64 +95,59 @@ const Results: React.FC = () => {
           </div>
         </motion.div>
 
-        {/* Prediction Results */}
+        {/* Your Trades */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
           className="mb-12"
         >
-          <h2 className="text-3xl font-black text-text mb-8">Your <span className="accent-gradient">Predictions</span></h2>
+          <h2 className="text-3xl font-black text-text mb-8">Your <span className="accent-gradient">Trades</span></h2>
           <div className="space-y-4">
-            {resolvedArenas.map((arena, index) => (
+            {trades.length === 0 && (
+              <div className="glass-card p-6 text-center text-text-secondary">No trades yet</div>
+            )}
+            {trades.map((t, index) => (
               <motion.div
-                key={arena.id}
+                key={`${t.arenaId}-${index}-${t.timestamp.getTime()}`}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.1 }}
+                transition={{ delay: index * 0.03 }}
                 className="glass-card p-6 hover:shadow-xl transition-all duration-300"
               >
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div className="flex-1">
                     <div className="flex items-start justify-between mb-3">
-                      <h3 className="text-lg font-bold text-text flex-1">{arena.title}</h3>
+                      <h3 className="text-lg font-bold text-text flex-1">{t.title}</h3>
                       <div className="ml-4">
-                        {arena.isWon ? (
-                          <span className="px-2 py-1 bg-success/20 text-success rounded-full text-xs font-bold border border-success/30">
-                            WON
-                          </span>
+                        {t.status === 'won' ? (
+                          <span className="px-2 py-1 bg-success/20 text-success rounded-full text-xs font-bold border border-success/30">WON</span>
+                        ) : t.status === 'lost' ? (
+                          <span className="px-2 py-1 bg-error/20 text-error rounded-full text-xs font-bold border border-error/30">LOST</span>
                         ) : (
-                          <span className="px-2 py-1 bg-error/20 text-error rounded-full text-xs font-bold border border-error/30">
-                            LOST
-                          </span>
+                          <span className="px-2 py-1 bg-text-muted/20 text-text-muted rounded-full text-xs font-bold border border-text-muted/30">PENDING</span>
                         )}
                       </div>
                     </div>
-                    
+
                     <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-6 text-sm text-text-secondary mb-3">
-                      <span>Your prediction: <span className="font-semibold text-text">{arena.userPrediction ? 'Yes' : 'No'}</span></span>
-                      <span>Correct answer: <span className="font-semibold text-text">{arena.correctAnswer ? 'Yes' : 'No'}</span></span>
+                      <span>Your prediction: <span className="font-semibold text-text">{t.userPrediction ? 'Yes' : 'No'}</span></span>
+                      {t.isResolved && (
+                        <span>Correct answer: <span className="font-semibold text-text">{t.correctAnswer ? 'Yes' : 'No'}</span></span>
+                      )}
+                      <span>Stake: <span className="font-semibold text-text">{formatHBAR(t.stake)}</span></span>
+                      {t.coverage > 0 && (
+                        <span>Coverage: <span className="font-semibold text-text">{Math.round(t.coverage * 100)}%</span></span>
+                      )}
                     </div>
-                    
+
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between space-y-1 sm:space-y-0 sm:space-x-4 text-xs text-text-muted">
                       <div className="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-4">
-                        <span>Predicted: {arena.deadline.toLocaleDateString('en-US', { 
-                          month: 'short', 
-                          day: 'numeric', 
-                          year: 'numeric' 
-                        })} at {arena.deadline.toLocaleTimeString('en-US', { 
-                          hour: '2-digit', 
-                          minute: '2-digit',
-                          hour12: true 
-                        })}</span>
-                        <span>Resolved: {new Date(arena.deadline.getTime() + 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { 
-                          month: 'short', 
-                          day: 'numeric', 
-                          year: 'numeric' 
-                        })}</span>
+                        <span>Placed: {t.timestamp.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} at {t.timestamp.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}</span>
+                        {t.isResolved && <span>Resolved</span>}
                       </div>
-                      <div className={`text-lg font-bold ${arena.isWon ? 'text-success' : 'text-error'}`}>
-                        {arena.isWon ? `+${formatHBAR(arena.reward)}` : `-${formatHBAR(10)}`}
+                      <div className={`text-lg font-bold ${t.status === 'won' ? 'text-success' : t.status === 'lost' ? 'text-error' : 'text-text-secondary'}`}>
+                        {t.status === 'won' ? `+${formatHBAR(t.payout)}` : t.status === 'lost' ? `-${formatHBAR(Math.max(0, t.stake - t.payout))}` : '—'}
                       </div>
                     </div>
                   </div>

@@ -65,6 +65,9 @@ const ArenaDetails: React.FC = () => {
   const [insuranceEnabled, setInsuranceEnabled] = useState(false);
   const [coveragePercent, setCoveragePercent] = useState(0); // 0-80
   const [tradeSuccess, setTradeSuccess] = useState<string | null>(null);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [confirmSummary, setConfirmSummary] = useState<{ side: 'YES'|'NO'; qty: number; price: number; premium: number; total: number } | null>(null);
+  const [selectedSide, setSelectedSide] = useState<'YES' | 'NO'>('YES');
 
   useEffect(() => {
     if (!arena) {
@@ -154,15 +157,24 @@ const ArenaDetails: React.FC = () => {
     setUserBalance(2500);
   };
 
-  const handleTrade = () => {
+  const openConfirmTrade = () => {
+    const side: 'YES'|'NO' = selectedSide;
+    const qty = isBuying ? sharesToBuy : sharesToSell;
+    const price = Number((side === 'YES' ? currentYesPrice : currentNoPrice).toFixed(2));
+    const total = qty * price + insurancePremium;
+    setConfirmSummary({ side, qty, price, premium: insurancePremium, total });
+    setIsConfirmOpen(true);
+  };
+
+  const executeTrade = () => {
     if (!isWalletConnected) {
       connectWallet();
-      return;
+      // Continue with trade after mock connect
     }
-
+ 
     const action: 'Bought'|'Sold' = isBuying ? 'Bought' : 'Sold';
     const qty = isBuying ? sharesToBuy : sharesToSell;
-    const price = Number((isBuying ? currentYesPrice : currentNoPrice).toFixed(2));
+    const price = Number((selectedSide === 'YES' ? currentYesPrice : currentNoPrice).toFixed(2));
     const tx = {
       id: Date.now(),
       user: walletAddress || '0xAnon...User',
@@ -179,11 +191,13 @@ const ArenaDetails: React.FC = () => {
     // Update local balance (mock) including premium if insurance is enabled
     const totalCost = qty * price + insurancePremium;
     setUserBalance(b => Math.max(0, b - totalCost));
-    // Update arena votes locally
+    // Update arena votes locally (only on buys)
     try {
       const updated = { ...arena } as any;
-      if (isBuying) updated.yesVotes = (updated.yesVotes || 0) + qty;
-      else updated.noVotes = (updated.noVotes || 0) + qty;
+      if (isBuying) {
+        if (selectedSide === 'YES') updated.yesVotes = (updated.yesVotes || 0) + qty;
+        else updated.noVotes = (updated.noVotes || 0) + qty;
+      }
       dispatch({ type: 'UPDATE_ARENA', payload: updated });
     } catch {}
 
@@ -193,7 +207,7 @@ const ArenaDetails: React.FC = () => {
       const trades = tradesRaw ? JSON.parse(tradesRaw) : [];
       trades.unshift({
         id: tx.id,
-        side: isBuying ? 'YES' : 'NO',
+        side: selectedSide,
         stake: qty,
         price,
         coverage,
@@ -206,12 +220,13 @@ const ArenaDetails: React.FC = () => {
     } catch {}
 
     // Reset inputs & give success feedback
-    setTradeSuccess(`${action} ${qty} ${isBuying ? 'YES' : 'NO'} shares successful`);
+    setTradeSuccess(`${action} ${qty} ${selectedSide} shares successful`);
     setTimeout(() => setTradeSuccess(null), 2000);
     setSharesToBuy(10);
     setSharesToSell(10);
     setInsuranceEnabled(false);
     setCoveragePercent(0);
+    setIsConfirmOpen(false);
   };
 
   const addComment = () => {
@@ -248,7 +263,7 @@ const ArenaDetails: React.FC = () => {
 
   // Insurance pricing (demo)
   const stake = isBuying ? sharesToBuy : sharesToSell;
-  const marketProb = isBuying ? currentYesPrice : currentNoPrice;
+  const marketProb = selectedSide === 'YES' ? currentYesPrice : currentNoPrice;
   const premiumRate = 0.05 + 0.10 * Math.abs(marketProb - 0.5);
   const coverage = Math.min(0.8, Math.max(0, coveragePercent / 100));
   const insurancePremium = insuranceEnabled ? stake * coverage * premiumRate : 0;
@@ -624,31 +639,51 @@ const ArenaDetails: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Trade Toggle */}
-                  <div className="flex bg-glass-bg rounded-2xl p-1">
-                    <button
-                      onClick={() => setIsBuying(true)}
-                      className={`flex-1 py-3 px-4 rounded-xl font-bold transition-all duration-300 ${
-                        isBuying ? 'bg-primary text-black' : 'text-text-secondary'
-                      }`}
-                    >
-                      Buy
-                    </button>
-                    <button
-                      onClick={() => setIsBuying(false)}
-                      className={`flex-1 py-3 px-4 rounded-xl font-bold transition-all duration-300 ${
-                        !isBuying ? 'bg-primary text-black' : 'text-text-secondary'
-                      }`}
-                    >
-                      Sell
-                    </button>
+                  {/* Side & Action Toggles */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div className="flex bg-glass-bg rounded-2xl p-1">
+                      <button
+                        onClick={() => setSelectedSide('YES')}
+                        className={`flex-1 py-3 px-4 rounded-xl font-bold transition-all duration-300 ${
+                          selectedSide === 'YES' ? 'bg-primary text-black' : 'text-text-secondary'
+                        }`}
+                      >
+                        YES
+                      </button>
+                      <button
+                        onClick={() => setSelectedSide('NO')}
+                        className={`flex-1 py-3 px-4 rounded-xl font-bold transition-all duration-300 ${
+                          selectedSide === 'NO' ? 'bg-primary text-black' : 'text-text-secondary'
+                        }`}
+                      >
+                        NO
+                      </button>
+                    </div>
+                    <div className="flex bg-glass-bg rounded-2xl p-1">
+                      <button
+                        onClick={() => setIsBuying(true)}
+                        className={`flex-1 py-3 px-4 rounded-xl font-bold transition-all duration-300 ${
+                          isBuying ? 'bg-primary text-black' : 'text-text-secondary'
+                        }`}
+                      >
+                        Buy
+                      </button>
+                      <button
+                        onClick={() => setIsBuying(false)}
+                        className={`flex-1 py-3 px-4 rounded-xl font-bold transition-all duration-300 ${
+                          !isBuying ? 'bg-primary text-black' : 'text-text-secondary'
+                        }`}
+                      >
+                        Sell
+                      </button>
+                    </div>
                   </div>
 
                   {/* Trade Form */}
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-text mb-2">
-                        {isBuying ? 'Buy' : 'Sell'} {isBuying ? 'YES' : 'NO'} shares
+                        {isBuying ? 'Buy' : 'Sell'} {selectedSide} shares
                       </label>
                       <div className="flex space-x-3">
                         <input
@@ -668,10 +703,7 @@ const ArenaDetails: React.FC = () => {
                       <div className="flex justify-between text-sm mb-2">
                         <span className="text-text-secondary">Price per share</span>
                         <span className="text-text">
-                          {isBuying 
-                            ? `${(currentYesPrice * 100).toFixed(0)}¢` 
-                            : `${(currentNoPrice * 100).toFixed(0)}¢`
-                          }
+                          {selectedSide === 'YES' ? `${(currentYesPrice * 100).toFixed(0)}¢` : `${(currentNoPrice * 100).toFixed(0)}¢`}
                         </span>
                       </div>
                       {/* Insurance Controls */}
@@ -710,7 +742,7 @@ const ArenaDetails: React.FC = () => {
                       <div className="flex justify-between text-sm mb-2">
                         <span className="text-text-secondary">Total cost</span>
                         <span className="text-text">
-                          {formatHBAR((isBuying ? sharesToBuy : sharesToSell) * (isBuying ? currentYesPrice : currentNoPrice) + insurancePremium)}
+                          {formatHBAR((isBuying ? sharesToBuy : sharesToSell) * (selectedSide === 'YES' ? currentYesPrice : currentNoPrice) + insurancePremium)}
                         </span>
                       </div>
                       <div className="flex justify-between text-sm font-bold">
@@ -726,10 +758,10 @@ const ArenaDetails: React.FC = () => {
                     </div>
 
                     <button
-                      onClick={handleTrade}
+                      onClick={openConfirmTrade}
                       className="w-full gradient-button py-4 text-lg font-bold"
                     >
-                      {isBuying ? 'Buy' : 'Sell'} {isBuying ? sharesToBuy : sharesToSell} Shares
+                      {isBuying ? 'Buy' : 'Sell'} {isBuying ? sharesToBuy : sharesToSell} {selectedSide} Shares
                     </button>
                     {tradeSuccess && (
                       <div className="text-center text-sm text-success mt-2">
@@ -910,6 +942,34 @@ const ArenaDetails: React.FC = () => {
           </div>
         </div>
       </div>
+      {/* Confirmation Modal */}
+      {isConfirmOpen && confirmSummary && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center px-4">
+          <div className="glass-card p-6 w-full max-w-md">
+            <h3 className="text-xl font-bold text-text mb-4">Confirm Trade</h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between"><span className="text-text-secondary">Side</span><span className="font-bold text-text">{confirmSummary.side}</span></div>
+              <div className="flex justify-between"><span className="text-text-secondary">Shares</span><span className="font-bold text-text">{confirmSummary.qty}</span></div>
+              <div className="flex justify-between"><span className="text-text-secondary">Price</span><span className="font-bold text-text">{(confirmSummary.price * 100).toFixed(0)}¢</span></div>
+              {confirmSummary.premium > 0 && (
+                <div className="flex justify-between"><span className="text-text-secondary">Premium</span><span className="font-bold text-text">{formatHBAR(confirmSummary.premium)}</span></div>
+              )}
+              <div className="flex justify-between"><span className="text-text-secondary">Total</span><span className="font-bold text-text">{formatHBAR(confirmSummary.total)}</span></div>
+            </div>
+            <div className="flex justify-end gap-3 mt-6">
+              <button onClick={() => setIsConfirmOpen(false)} className="px-4 py-2 bg-text-muted/20 text-text rounded-xl hover:bg-text-muted/30 transition-colors">Cancel</button>
+              <button onClick={executeTrade} className="px-4 py-2 bg-primary text-black rounded-xl font-bold hover:bg-primary-dark transition-colors">Confirm</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success Toast */}
+      {tradeSuccess && (
+        <div className="fixed bottom-4 right-4 z-50">
+          <div className="glass-card px-4 py-3 text-sm text-success border border-success/30">{tradeSuccess}</div>
+        </div>
+      )}
     </div>
   );
 };

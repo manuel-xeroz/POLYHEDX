@@ -1,6 +1,7 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { AppProvider } from './context/AppContext';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AppProvider, useApp } from './context/AppContext';
+import { useAccount } from 'wagmi';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import Landing from './pages/Landing';
@@ -23,14 +24,24 @@ function App() {
             <Route path="/arenas" element={<Arenas />} />
             <Route path="/arena/:id" element={<ArenaDetails />} />
             <Route path="/leaderboard" element={<Leaderboard />} />
-            <Route path="/results" element={<Results />} />
-            <Route path="/admin" element={<Admin />} />
+            <Route path="/results" element={<ProtectedRoute><Results /></ProtectedRoute>} />
+            <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
           </Routes>
           <Footer />
         </div>
       </Router>
     </AppProvider>
   );
+}
+
+// Protect routes that require a connected wallet
+function ProtectedRoute({ children }: { children: JSX.Element }) {
+  const { state } = useApp();
+  const { isConnected } = useAccount();
+  if (!(state.isConnected || isConnected)) {
+    return <Navigate to="/" replace />;
+  }
+  return children;
 }
 
 export default App;
