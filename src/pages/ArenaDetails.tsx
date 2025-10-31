@@ -62,6 +62,9 @@ const ArenaDetails: React.FC = () => {
   const storagePrefix = `polyhedx_arena_${id}`;
   const [isSaved, setIsSaved] = useState<boolean>(false);
   const [transactions, setTransactions] = useState<Array<{id:number;user:string;action:'Bought'|'Sold';shares:number;price:number;time:string}>>([]);
+  const [insuranceEnabled, setInsuranceEnabled] = useState(false);
+  const [coveragePercent, setCoveragePercent] = useState(0); // 0-80
+  const [tradeSuccess, setTradeSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     if (!arena) {
@@ -173,7 +176,7 @@ const ArenaDetails: React.FC = () => {
       try { localStorage.setItem(`${storagePrefix}_txs`, JSON.stringify(next)); } catch {}
       return next;
     });
-    // Update local balance (mock) with insurance premium
+    // Update local balance (mock) including premium if insurance is enabled
     const totalCost = qty * price + insurancePremium;
     setUserBalance(b => Math.max(0, b - totalCost));
     // Update arena votes locally
@@ -183,6 +186,7 @@ const ArenaDetails: React.FC = () => {
       else updated.noVotes = (updated.noVotes || 0) + qty;
       dispatch({ type: 'UPDATE_ARENA', payload: updated });
     } catch {}
+
     // Persist trade with insurance fields
     try {
       const tradesRaw = localStorage.getItem(`${storagePrefix}_trades`);
@@ -200,6 +204,14 @@ const ArenaDetails: React.FC = () => {
       });
       localStorage.setItem(`${storagePrefix}_trades`, JSON.stringify(trades));
     } catch {}
+
+    // Reset inputs & give success feedback
+    setTradeSuccess(`${action} ${qty} ${isBuying ? 'YES' : 'NO'} shares successful`);
+    setTimeout(() => setTradeSuccess(null), 2000);
+    setSharesToBuy(10);
+    setSharesToSell(10);
+    setInsuranceEnabled(false);
+    setCoveragePercent(0);
   };
 
   const addComment = () => {
@@ -234,9 +246,7 @@ const ArenaDetails: React.FC = () => {
   const totalVolume = marketData?.totalVolume || (arena ? arena.poolSize : 0);
   const openInterest = marketData?.openInterest || (arena ? arena.participants.length * 100 : 0);
 
-  // Insurance state & pricing (demo)
-  const [insuranceEnabled, setInsuranceEnabled] = useState(false);
-  const [coveragePercent, setCoveragePercent] = useState(0); // 0 - 80
+  // Insurance pricing (demo)
   const stake = isBuying ? sharesToBuy : sharesToSell;
   const marketProb = isBuying ? currentYesPrice : currentNoPrice;
   const premiumRate = 0.05 + 0.10 * Math.abs(marketProb - 0.5);
@@ -699,7 +709,9 @@ const ArenaDetails: React.FC = () => {
                       </div>
                       <div className="flex justify-between text-sm mb-2">
                         <span className="text-text-secondary">Total cost</span>
-                        <span className="text-text">{formatHBAR((isBuying ? sharesToBuy : sharesToSell) * (isBuying ? currentYesPrice : currentNoPrice) + insurancePremium)}</span>
+                        <span className="text-text">
+                          {formatHBAR((isBuying ? sharesToBuy : sharesToSell) * (isBuying ? currentYesPrice : currentNoPrice) + insurancePremium)}
+                        </span>
                       </div>
                       <div className="flex justify-between text-sm font-bold">
                         <span className="text-text-secondary">You will receive</span>
@@ -719,6 +731,11 @@ const ArenaDetails: React.FC = () => {
                     >
                       {isBuying ? 'Buy' : 'Sell'} {isBuying ? sharesToBuy : sharesToSell} Shares
                     </button>
+                    {tradeSuccess && (
+                      <div className="text-center text-sm text-success mt-2">
+                        {tradeSuccess}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
