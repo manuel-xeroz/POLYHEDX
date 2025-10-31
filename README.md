@@ -105,6 +105,7 @@ src/
 - GitHub: https://github.com/manuel-xeroz/POLYHEDX.git
 - Certification Link: https://ibb.co/4Z9dPRtV
 - Pitch/Deck: https://drive.google.com/file/d/1Carif6UEFWs-4yCq1nFBG6_YzLO9iVIA/view?usp=drive_link
+- YouTube video link: https://youtu.be/EV5Z6drH5HY
 
 
 Built with ❤️ on Hedera
