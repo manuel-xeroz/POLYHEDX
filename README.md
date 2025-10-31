@@ -41,7 +41,7 @@ REACT_APP_NETWORK=testnet
 1. Install Node.js 18+ and npm
 2. Clone and install
    ```bash
-   git clone <your-repo-url>
+   git clone https://github.com/manuel-xeroz/POLYHEDX.git
    cd polyhedx
    npm install
    ```
@@ -102,7 +102,7 @@ src/
 
 ### 🔗 Links
 - Live App: coming soon
-- GitHub: <your-repo-url>
+- GitHub: https://github.com/manuel-xeroz/POLYHEDX.git
 - Pitch/Deck: coming soon
 
 
