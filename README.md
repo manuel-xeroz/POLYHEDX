@@ -31,14 +31,10 @@ Create a `.env` in the project root with the following keys:
 
 ```env
 # WalletConnect / Reown project id (one of these required)
-REACT_APP_REOWN_PROJECT_ID=your_project_id
 REACT_APP_WC_PROJECT_ID=your_project_id
 
 # Hedera network selection: mainnet | testnet | previewnet (defaults to testnet)
 REACT_APP_NETWORK=testnet
-
-# Optional: backend/data API base (defaults to https://api.polyhedx.com)
-REACT_APP_API_URL=https://api.polyhedx.com
 ```
 
 ### 🧪 Getting Started
